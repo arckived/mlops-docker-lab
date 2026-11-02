@@ -25,7 +25,7 @@ services:
     volumes:
       - model_artifacts:/app/artifacts
 
-  # 3. Web app: starts after training succeeded and the database is healthy
+  # 3. Streamlit dashboard: starts after training succeeded and the database is healthy
   app:
     build:
       context: .
@@ -33,10 +33,10 @@ services:
     image: wine-sommelier
     container_name: sommelier_app
     environment:
-      PORT: ${APP_PORT:-5000}
+      PORT: ${APP_PORT:-8501}
       DATABASE_URL: postgresql+psycopg://sommelier:sommelier@db:5432/predictions
     ports:
-      - "${APP_PORT:-5000}:${APP_PORT:-5000}"
+      - "${APP_PORT:-8501}:${APP_PORT:-8501}"
     volumes:
       - model_artifacts:/app/artifacts:ro
     depends_on:

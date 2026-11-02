@@ -24,19 +24,20 @@ CMD ["python", "src/train.py"]
 FROM trainer AS model_build
 RUN python src/train.py
 
-#  Stage 4: serving 
+#  Stage 4: serving (Streamlit dashboard)
 FROM base AS serving
-ENV MODEL_DIR=/app/artifacts PORT=5000
+ENV MODEL_DIR=/app/artifacts PORT=8501 \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false \
+    STREAMLIT_CLIENT_TOOLBAR_MODE=viewer
 RUN useradd --create-home --uid 1000 sommelier
-COPY src/app.py src/db.py ./
-COPY src/templates/ templates/
+COPY src/streamlit_app.py src/db.py ./
 COPY --from=model_build /app/artifacts/ artifacts/
 RUN chown -R sommelier:sommelier /app
 USER sommelier
 
-EXPOSE 5000
+EXPOSE 8501
+# Streamlit has a built in health URL
 HEALTHCHECK --interval=15s --timeout=3s --start-period=20s --retries=3 \
-    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.environ[\"PORT\"]}/health', timeout=2)"
+    CMD python -c "import os, urllib.request; urllib.request.urlopen(f'http://localhost:{os.environ[\"PORT\"]}/_stcore/health', timeout=2)"
 
-#  preload loads the model and creates the DB table once, before workers fork
-CMD ["sh", "-c", "gunicorn --preload --bind 0.0.0.0:${PORT} --workers 2 --access-logfile - app:app"]
+CMD ["sh", "-c", "streamlit run streamlit_app.py --server.port ${PORT} --server.address 0.0.0.0 --server.headless true"]
