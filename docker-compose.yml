@@ -1,0 +1,50 @@
+services:
+  # 1. Prediction log database
+  db:
+    image: postgres:16-alpine
+    container_name: sommelier_db
+    environment:
+      POSTGRES_USER: sommelier
+      POSTGRES_PASSWORD: sommelier
+      POSTGRES_DB: predictions
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sommelier -d predictions"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # 2. One-shot trainer: trains, writes the model to the shared volume, exits
+  trainer:
+    build:
+      context: .
+      target: trainer
+    image: wine-sommelier-trainer
+    container_name: sommelier_trainer
+    volumes:
+      - model_artifacts:/app/artifacts
+
+  # 3. Web app: starts after training succeeded and the database is healthy
+  app:
+    build:
+      context: .
+      target: serving
+    image: wine-sommelier
+    container_name: sommelier_app
+    environment:
+      PORT: ${APP_PORT:-5000}
+      DATABASE_URL: postgresql+psycopg://sommelier:sommelier@db:5432/predictions
+    ports:
+      - "${APP_PORT:-5000}:${APP_PORT:-5000}"
+    volumes:
+      - model_artifacts:/app/artifacts:ro
+    depends_on:
+      trainer:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+
+volumes:
+  model_artifacts:
+  pg_data:

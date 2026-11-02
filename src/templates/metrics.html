@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Model | Wine Sommelier{% endblock %}
+{% block content %}
+<section class="stats">
+    <div class="stat"><span class="stat-label">Selected model</span><span class="stat-value">{{ metrics.selected_model }}</span></div>
+    <div class="stat"><span class="stat-label">Test accuracy</span><span class="stat-value">{{ '%.1f'|format(metrics.accuracy * 100) }}%</span></div>
+    <div class="stat"><span class="stat-label">Macro F1</span><span class="stat-value">{{ '%.3f'|format(metrics.macro_f1) }}</span></div>
+    <div class="stat"><span class="stat-label">Train / test rows</span><span class="stat-value">{{ metrics.n_train }} / {{ metrics.n_test }}</span></div>
+</section>
+
+<div class="grid two">
+    <section class="card">
+        <h2>Candidate models</h2>
+        <p class="muted small">Both were trained by the trainer container. The one with the higher macro F1 is saved and served.</p>
+        <table>
+            <thead><tr><th>Model</th><th class="num">Accuracy</th><th class="num">Macro F1</th></tr></thead>
+            <tbody>
+            {% for name, r in metrics.candidates.items() %}
+            <tr class="{{ 'picked' if name == metrics.selected_model }}">
+                <td>{{ name }}{% if name == metrics.selected_model %} <span class="tag">served</span>{% endif %}</td>
+                <td class="num">{{ '%.3f'|format(r.accuracy) }}</td>
+                <td class="num">{{ '%.3f'|format(r.macro_f1) }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <h2 class="spaced">Per class</h2>
+        <table>
+            <thead><tr><th>Class</th><th class="num">Precision</th><th class="num">Recall</th><th class="num">F1</th><th class="num">Wines in data</th></tr></thead>
+            <tbody>
+            {% for c in classes %}
+            <tr>
+                <td><span class="dot cls-{{ c|lower }}"></span>{{ c }}</td>
+                <td class="num">{{ '%.3f'|format(metrics.per_class[c].precision) }}</td>
+                <td class="num">{{ '%.3f'|format(metrics.per_class[c].recall) }}</td>
+                <td class="num">{{ '%.3f'|format(metrics.per_class[c]['f1-score']) }}</td>
+                <td class="num">{{ metrics.class_distribution[c] }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        <p class="muted small">Low = quality 3 to 5, Medium = 6, High = 7 to 9.</p>
+    </section>
+
+    <section class="card">
+        <h2>Confusion matrix</h2>
+        <p class="muted small">Rows are the true class, columns are what the model predicted on the test set.</p>
+        {% set cm = metrics.confusion_matrix %}
+        {% set ns = namespace(peak=1) %}
+        {% for row in cm %}{% for v in row %}{% if v > ns.peak %}{% set ns.peak = v %}{% endif %}{% endfor %}{% endfor %}
+        <table class="cm">
+            <thead><tr><th></th>{% for c in classes %}<th class="num">{{ c }}</th>{% endfor %}</tr></thead>
+            <tbody>
+            {% for row in cm %}
+            {% set i = loop.index0 %}
+            <tr>
+                <th>{{ classes[i] }}</th>
+                {% for v in row %}
+                <td class="num cell {{ 'diag' if loop.index0 == i }}" style="--alpha: {{ (v / ns.peak)|round(3) }}">{{ v }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+</div>
+{% endblock %}

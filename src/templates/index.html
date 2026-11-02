@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Predict | Wine Sommelier{% endblock %}
+{% block content %}
+<div class="grid">
+    <section class="card">
+        <div class="card-head">
+            <h1>Describe the wine</h1>
+            <div class="toggle" role="radiogroup" aria-label="Wine type">
+                <button type="button" class="toggle-btn active" data-type="red">Red</button>
+                <button type="button" class="toggle-btn" data-type="white">White</button>
+            </div>
+        </div>
+        <p class="muted">Move the sliders to set the lab measurements. They start at the typical value for the selected wine type.</p>
+
+        <form id="wineForm">
+            {% for f in features %}
+            {% set s = stats[f] %}
+            <div class="field">
+                <label for="f{{ loop.index }}">{{ f|pretty }}</label>
+                <input type="range" id="f{{ loop.index }}" name="{{ f }}"
+                       min="{{ s.min }}" max="{{ s.max }}" step="{{ ((s.max - s.min) / 200)|round(5) }}"
+                       value="{{ s.median_red }}"
+                       data-red="{{ s.median_red }}" data-white="{{ s.median_white }}">
+                <output for="f{{ loop.index }}"></output>
+            </div>
+            {% endfor %}
+            <div class="actions">
+                <button type="button" id="resetBtn" class="btn ghost">Reset to typical</button>
+                <button type="submit" class="btn primary" id="predictBtn">Rate this wine</button>
+            </div>
+        </form>
+    </section>
+
+    <aside class="side">
+        <section class="card result" id="result" aria-live="polite">
+            <h2>Prediction</h2>
+            <div id="resultEmpty" class="muted">Set the measurements and press <strong>Rate this wine</strong>.</div>
+            <div id="resultBody" hidden>
+                <div class="verdict">
+                    <span class="badge" id="verdict"></span>
+                    <span class="muted" id="confidence"></span>
+                </div>
+                <div class="bars" id="probBars">
+                    {% for c in metrics.classes %}
+                    <div class="bar-row">
+                        <span class="bar-label">{{ c }}</span>
+                        <div class="bar-track"><div class="bar-fill cls-{{ c|lower }}" data-class="{{ c }}"></div></div>
+                        <span class="bar-value" data-value="{{ c }}"></span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <p class="muted small" id="logNote"></p>
+            </div>
+            <div id="resultError" class="error" hidden></div>
+        </section>
+
+        <section class="card">
+            <h2>What the model looks at</h2>
+            <p class="muted small">Drop in macro F1 when each feature is shuffled (permutation importance on the test set).</p>
+            {% set top = importance[0].importance if importance[0].importance > 0 else 1 %}
+            <div class="bars">
+                {% for item in importance %}
+                <div class="bar-row">
+                    <span class="bar-label">{{ item.feature|pretty }}</span>
+                    <div class="bar-track"><div class="bar-fill neutral" style="width: {{ [item.importance / top * 100, 0]|max }}%"></div></div>
+                    <span class="bar-value">{{ '%.3f'|format(item.importance) }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+    </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+{% endblock %}

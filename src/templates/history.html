@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}History | Wine Sommelier{% endblock %}
+{% block content %}
+<section class="stats">
+    {% set total = counts.values()|sum %}
+    <div class="stat"><span class="stat-label">Predictions logged</span><span class="stat-value">{{ total }}</span></div>
+    {% for c in ['Low', 'Medium', 'High'] %}
+    <div class="stat"><span class="stat-label"><span class="dot cls-{{ c|lower }}"></span>{{ c }}</span><span class="stat-value">{{ counts.get(c, 0) }}</span></div>
+    {% endfor %}
+</section>
+
+<section class="card">
+    <h2>Latest predictions</h2>
+    <p class="muted small">Every call to <code>/api/predict</code> is stored in the database container. Showing the 50 most recent.</p>
+    {% if rows %}
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th><th>Time (UTC)</th><th>Type</th><th class="num">Alcohol</th>
+                    <th class="num">Volatile acidity</th><th class="num">Sulphates</th><th>Prediction</th><th class="num">Confidence</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in rows %}
+            <tr>
+                <td>{{ r.id }}</td>
+                <td>{{ r.created_at }}</td>
+                <td>{{ r.wine_type|capitalize }}</td>
+                <td class="num">{{ '%.2f'|format(r.features['alcohol']) }}</td>
+                <td class="num">{{ '%.2f'|format(r.features['volatile acidity']) }}</td>
+                <td class="num">{{ '%.2f'|format(r.features['sulphates']) }}</td>
+                <td><span class="dot cls-{{ r.predicted_class|lower }}"></span>{{ r.predicted_class }}</td>
+                <td class="num">{{ '%.0f'|format(r.confidence * 100) }}%</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="muted">No predictions yet. Make one on the <a href="{{ url_for('index') }}">Predict</a> page.</p>
+    {% endif %}
+</section>
+{% endblock %}
