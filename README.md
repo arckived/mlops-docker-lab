@@ -1,30 +1,11 @@
-# Wine Quality Sommelier (Docker Lab 2, modified)
+# Wine Quality Sommelier (Docker Lab)
 
-This is my submission for **Docker Lab 2** from
-[raminmohammadi/MLOps](https://github.com/raminmohammadi/MLOps/tree/main/Labs/Docker_Labs/Lab2).
-
-The original lab trains a small TensorFlow network on the Iris dataset and serves it with Flask.
-In my version, a model trained on the **UCI Wine Quality** dataset rates a wine as **Low, Medium or High quality**
+A model trained on the **UCI Wine Quality** dataset rates a wine as **Low, Medium or High quality**
 from its lab measurements. The app runs as **three containers** with Docker Compose: a trainer, a web app,
 and a Postgres database that logs every prediction.
 
 ![Prediction dashboard](docs/dashboard.png)
 
-## What I changed from the original lab
-
-| Area | Original Lab 2 | This version |
-|---|---|---|
-| Dataset | Iris (150 rows, 4 features, built into sklearn) | UCI Wine Quality, red + white (6,497 rows, 12 features), loaded from CSV |
-| Target | Flower species | Quality score grouped into Low (3 to 5), Medium (6), High (7 to 9) |
-| Model | Keras neural network (TensorFlow) | scikit-learn Pipeline (StandardScaler + model). Trainer compares RandomForest and GradientBoosting and keeps the one with the better macro F1 |
-| Preprocessing | Scaler fitted in training but **not applied when serving** (bug) | Scaler is part of the saved Pipeline, so serving uses the same preprocessing as training |
-| Containers | 2 (trainer, server) | 3 (trainer, app, **Postgres** for logging predictions) |
-| Ports | App listens on 4000 but Dockerfile exposes 80 and compose maps 80:80 (bug) | One port, set by `APP_PORT` (default 5000), used everywhere |
-| Image | `python:3.10` full image + TensorFlow (several GB) | `python:3.11-slim`, no TensorFlow, pinned versions, `.dockerignore` |
-| Server | Flask dev server with `debug=True` | gunicorn with 2 workers, runs as a non root user, Docker `HEALTHCHECK` |
-| UI | Form with 4 number boxes, shows one class name | Sliders preset to typical red or white values, probability bar for each class, feature importance chart |
-| Extra pages | none | **Model** page (accuracy, F1, per class scores, confusion matrix) and **History** page (predictions stored in Postgres) |
-| API | `/predict` form post | JSON `POST /api/predict` with input validation, plus `/api/metrics`, `/api/history`, `/health` |
 
 ## How it works
 
