@@ -3,27 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Wine Sommelier{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <title>{% block title %}Wine Quality Sommelier{% endblock %}</title>
 </head>
 <body>
-    <header class="topbar">
-        <div class="brand">
-            <span class="logo" aria-hidden="true"></span>
-            <span>Wine Quality Sommelier</span>
-        </div>
-        <nav>
-            <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' }}">Predict</a>
-            <a href="{{ url_for('metrics_page') }}" class="{{ 'active' if request.endpoint == 'metrics_page' }}">Model</a>
-            <a href="{{ url_for('history_page') }}" class="{{ 'active' if request.endpoint == 'history_page' }}">History</a>
-        </nav>
-    </header>
-    <main>
-        {% block content %}{% endblock %}
-    </main>
-    <footer>
-        Model: {{ metrics.selected_model if metrics else '' }} trained {{ metrics.trained_at if metrics else '' }}
-    </footer>
-    {% block scripts %}{% endblock %}
+    <h1>Wine Quality Sommelier</h1>
+    <p>
+        <a href="{{ url_for('index') }}">Predict</a> |
+        <a href="{{ url_for('metrics_page') }}">Model</a> |
+        <a href="{{ url_for('history_page') }}">History</a>
+    </p>
+    <hr>
+
+    {% block content %}{% endblock %}
+
+    <hr>
+    <p><small>Model: {{ metrics.selected_model }}, trained {{ metrics.trained_at }}</small></p>
 </body>
 </html>

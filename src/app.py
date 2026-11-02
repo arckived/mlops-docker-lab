@@ -1,6 +1,6 @@
 """Flask service for the Wine Quality Sommelier.
 
-Pages:   /            prediction dashboard
+Pages:   /            prediction form (plain HTML form, no JavaScript)
          /metrics     model evaluation from training
          /history     predictions logged to the database
 API:     POST /api/predict, GET /api/metrics, GET /api/history, GET /health
@@ -69,20 +69,63 @@ def parse_input(payload: dict) -> tuple[str, dict]:
     return wine_type, values
 
 
-@app.get("/")
+def typical_values(wine_type: str) -> dict:
+    """Median measurements of a red or white wine, used to prefill the form."""
+    key = "median_red" if wine_type == "red" else "median_white"
+    return {f: round(METRICS["feature_stats"][f][key], 4) for f in INPUT_FEATURES}
+
+
+def predict(wine_type: str, values: dict) -> dict:
+    """Run the model on one wine, save the result to the database and return it."""
+    row = {**values, "is_red": 1 if wine_type == "red" else 0}
+    X = pd.DataFrame([row], columns=FEATURES)
+    probs = model.predict_proba(X)[0]
+    probabilities = {cls: round(float(p), 4) for cls, p in zip(CLASSES, probs)}
+    predicted = max(probabilities, key=probabilities.get)
+    prediction_id = db.log_prediction(wine_type, values, predicted, probabilities[predicted])
+    return {
+        "id": prediction_id,
+        "wine_type": wine_type,
+        "predicted_class": predicted,
+        "confidence": probabilities[predicted],
+        "probabilities": {c: probabilities[c] for c in METRICS["classes"]},
+    }
+
+
+@app.route("/", methods=["GET", "POST"])
 def index():
+    result = None
+    error = None
+    if request.method == "POST":
+        # The HTML form sends every field as text; parse_input converts and checks them.
+        values = request.form.to_dict()
+        wine_type = values.get("wine_type", "red")
+        try:
+            wine_type, parsed = parse_input(values)
+            result = predict(wine_type, parsed)
+        except ValueError as e:
+            error = str(e)
+    else:
+        wine_type = request.args.get("type", "red")
+        if wine_type not in ("red", "white"):
+            wine_type = "red"
+        values = typical_values(wine_type)
+
     return render_template(
         "index.html",
         features=INPUT_FEATURES,
         stats=METRICS["feature_stats"],
         importance=METRICS["feature_importance"],
-        metrics=METRICS,
+        wine_type=wine_type,
+        values=values,
+        result=result,
+        error=error,
     )
 
 
 @app.get("/metrics")
 def metrics_page():
-    return render_template("metrics.html", metrics=METRICS, classes=METRICS["classes"])
+    return render_template("metrics.html", classes=METRICS["classes"])
 
 
 @app.get("/history")
@@ -96,23 +139,7 @@ def api_predict():
         wine_type, values = parse_input(request.get_json(silent=True))
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-
-    row = {**values, "is_red": 1 if wine_type == "red" else 0}
-    X = pd.DataFrame([row], columns=FEATURES)
-    probs = model.predict_proba(X)[0]
-    probabilities = {cls: round(float(p), 4) for cls, p in zip(CLASSES, probs)}
-    predicted = max(probabilities, key=probabilities.get)
-
-    prediction_id = db.log_prediction(wine_type, values, predicted, probabilities[predicted])
-    return jsonify(
-        {
-            "id": prediction_id,
-            "wine_type": wine_type,
-            "predicted_class": predicted,
-            "confidence": probabilities[predicted],
-            "probabilities": {c: probabilities[c] for c in METRICS["classes"]},
-        }
-    )
+    return jsonify(predict(wine_type, values))
 
 
 @app.get("/api/metrics")

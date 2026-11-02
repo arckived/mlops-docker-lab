@@ -30,7 +30,6 @@ ENV MODEL_DIR=/app/artifacts PORT=5000
 RUN useradd --create-home --uid 1000 sommelier
 COPY src/app.py src/db.py ./
 COPY src/templates/ templates/
-COPY src/static/ static/
 COPY --from=model_build /app/artifacts/ artifacts/
 RUN chown -R sommelier:sommelier /app
 USER sommelier

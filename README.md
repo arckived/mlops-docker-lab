@@ -32,6 +32,9 @@ and a Postgres database that logs every prediction.
 * **`app`** waits until the trainer has **finished successfully** and the database is **healthy**
   (`depends_on` conditions), then serves the model from the shared volume.
 
+The web pages are plain HTML forms rendered by Flask (Jinja templates). There is no custom CSS or
+JavaScript: the form posts to Flask, Python runs the model, and Flask returns the page with the result.
+
 The Dockerfile has four stages:
 
 1. `base`: slim Python image and dependencies (shared by the other stages, so they're installed once)
@@ -55,8 +58,7 @@ just produced.
 │   ├── train.py          training, model selection, metrics.json
 │   ├── app.py            Flask routes and API
 │   ├── db.py             prediction log (Postgres, or SQLite fallback)
-│   ├── templates/        dashboard, model and history pages
-│   └── static/           CSS and JS
+│   └── templates/        plain HTML pages: predict, model, history
 └── docs/                 screenshots
 ```
 
@@ -126,7 +128,7 @@ Missing or invalid fields return HTTP 400 with an `error` message.
 
 | Endpoint | Method | Returns |
 |---|---|---|
-| `/` | GET | Prediction dashboard |
+| `/` | GET, POST | Prediction form (POST submits the form and shows the result) |
 | `/metrics` | GET | Model evaluation page |
 | `/history` | GET | Last 50 logged predictions |
 | `/api/predict` | POST | Prediction as JSON (also saved to the database) |
